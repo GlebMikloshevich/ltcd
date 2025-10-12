@@ -1,0 +1,68 @@
+[project]
+name = "ltcd"
+version = "0.1.0"
+description = "Lightweight Neural Architectures for Table Cell Detection"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+
+[dependency-groups]
+dev = [
+    "isort>=6.0.1",
+    "pytest>=8.4.1",
+    "ruff>=0.12.2",
+]
+
+
+[tool.ruff]
+line-length = 120
+indent-width = 4
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "W",
+    "F",
+    "I",
+    "N",
+    "UP",
+    "S",
+    "COM",
+    "B",
+    "SIM",
+    "T20",
+    "Q",
+    "PTH",
+    "TD",
+    "ANN"
+]
+ignore = [
+    "TD003",  # TODO issue link
+    "N812",   # allow upperacase import aliases (torch.functional, albumentations)  
+]
+fixable = ["A", "B", "C", "D", "E", "F", "I"]
+unfixable = []
+
+[tool.ruff.lint.isort]
+case-sensitive = false
+default-section = "third-party"
+lines-after-imports = 1
+lines-between-types = 1
+
+[tool.isort]
+multi_line_output=3
+src_paths=["src/piv"]
+force_grid_wrap=2
+line_length=79
+include_trailing_comma=true
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
