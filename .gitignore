@@ -1,3 +1,5 @@
+src/ltcd/generators/doc_generator.py
+
 # Python-generated files
 __pycache__/
 *.py[oc]
