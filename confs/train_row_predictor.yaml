@@ -1,0 +1,37 @@
+experiment_name: table_row_prediction
+run_name: lstm_row_predictor_base
+model_name: lstm_row_predictor
+
+params:
+  # Dataset
+  dataset_dir: /path/to/dataset
+  image_size:
+    - 512
+    - 512
+  num_keypoints: 90
+  num_rows: 18
+  num_cols: 5
+
+  # Model
+  model_type: "base"  # Options: "base", "multiscale"
+  hidden_size: 256
+  num_lstm_layers: 2
+  dropout: 0.1
+  use_pretrained: false
+
+  # Loss
+  loss_type: "combined"  # Options: "mse", "combined", "full"
+  mse_weight: 1.0
+  line_weight: 0.1
+  spacing_weight: 0.05  # Only for "full" loss
+
+  # Training
+  epochs: 100
+  batch_size: 16
+  lr: 1e-4
+  weight_decay: 1e-4
+  num_workers: 4
+
+  # Scheduler
+  scheduler: "cosine"  # Options: "cosine", "plateau", "step"
+  step_size: 10  # For step scheduler only

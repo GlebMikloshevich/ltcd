@@ -1,0 +1,61 @@
+experiment_name: yolo_keypoint_predictor_medium
+run_name: yolo_keypoint_medium_v1
+
+params:
+  # Dataset
+  dataset_dir: /path/to/dataset
+  image_size: [512, 512]
+  num_keypoints: 90
+  num_rows: 18
+  num_cols: 5
+
+  # Model
+  model_type: yolo_keypoint_medium
+  # Medium = ResNet18 truncated through layer3 + tiny FPN (P3 ⊕ P2↑) — ~3M params at h=128
+  hidden_size: 128       # 128/192/256 give 3.0M / 3.3M / 3.6M params
+  use_pretrained: true   # conv1+layer1+layer2+layer3 weights load; layer4/avgpool/fc dropped
+
+  # Detection grid is the full H/8 × W/8 feature map — 64×64 for 512px input.
+
+  # Unused by this model, kept to avoid KeyError in dataset/loss setup paths
+  num_lstm_layers: 2
+  dropout: 0.1
+  num_row_samples: 5
+  num_col_samples: 18
+
+  # Training
+  epochs: 100
+  batch_size: 24         # between Small (32) and Full (16)
+  lr: 1.5e-3
+  weight_decay: 1e-4
+  num_workers: 4
+  clip_grad: 1.0
+  warmup_epochs: 5
+
+  # Data augmentation
+  augment: true
+  augmentation:
+    flip_prob: 0.5
+    rotation_range: 5.0
+    scale_range: [0.95, 1.05]
+
+  # EMA
+  use_ema: true
+  ema_decay: 0.999
+
+  # Loss — YOLOKeypointLoss params (depend on grid size, not on backbone)
+  coord_weight_yolo: 5.0
+  conf_weight: 1.0
+  pos_weight: 45.0
+
+  # Inference
+  conf_threshold: 0.5
+
+  # Early stopping
+  early_stopping: true
+  early_stopping_patience: 25
+  early_stopping_min_delta: 0.0
+
+  # Visualization
+  visualize_every_n_epochs: 5
+  num_vis_samples: 4

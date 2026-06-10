@@ -1,0 +1,64 @@
+experiment_name: yolo_keypoint_predictor
+run_name: yolo_keypoint_v1
+
+params:
+  # Dataset
+  dataset_dir: /path/to/dataset
+  image_size: [512, 512]
+  num_keypoints: 90
+  num_rows: 18    # expected table rows (used for dataset setup only)
+  num_cols: 5     # expected table cols (used for dataset setup only)
+
+  # Model
+  model_type: yolo_keypoint
+  backbone_name: resnet34
+  hidden_size: 256
+  use_pretrained: true
+
+  # Detection grid is the full H/8 × W/8 feature map — 64×64 for 512px input.
+  # No max_rows/max_cols needed.
+
+  # Unused by this model, kept to avoid KeyError in dataset setup
+  num_lstm_layers: 2
+  dropout: 0.1
+  num_row_samples: 5
+  num_col_samples: 18
+
+  # Training
+  epochs: 100
+  batch_size: 16
+  lr: 1e-3
+  weight_decay: 1e-4
+  num_workers: 4
+  clip_grad: 1.0
+  warmup_epochs: 5
+
+  # Data augmentation
+  augment: true
+  augmentation:
+    flip_prob: 0.5
+    rotation_range: 5.0
+    scale_range: [0.95, 1.05]
+
+  # EMA
+  use_ema: true
+  ema_decay: 0.999
+
+  # Loss — YOLOKeypointLoss params
+  # pos_weight: ratio of negative to positive cells ≈ (64×64 - N_gt) / N_gt
+  # For 4096 cells, 90 GT keypoints: (4096-90)/90 ≈ 44.5 → use 45.0
+  coord_weight_yolo: 5.0   # weight on coordinate loss (positive cells only)
+  conf_weight: 1.0         # weight on BCE confidence loss
+  pos_weight: 45.0         # BCE pos_weight to balance positives vs negatives
+
+  # Inference
+  conf_threshold: 0.5      # threshold for decode()
+
+  # Early stopping
+  early_stopping: true
+  early_stopping_patience: 25
+  early_stopping_min_delta: 0.0
+
+  # Visualization
+  visualize_every_n_epochs: 5
+  num_vis_samples: 4

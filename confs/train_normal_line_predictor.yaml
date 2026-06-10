@@ -1,0 +1,68 @@
+# Normal Form Line Predictor Training Configuration
+#
+# Model types:
+#   - v1: Per-row x-coordinates (each row predicts its own x-coords)
+#   - v2: Shared x-coordinates across all rows (more constrained)
+
+experiment_name: normal_line_predictor
+run_name: normal_line_v1
+
+params:
+  # Dataset
+  dataset_dir: /path/to/dataset
+  image_size: [512, 512]
+  num_keypoints: 90
+  num_rows: 18
+  num_cols: 5
+
+  # Model
+  model_type: v2  # v1: per-row x-coords, v2: shared x-coords (recommended)
+  hidden_size: 256
+  num_lstm_layers: 2
+  dropout: 0.1
+  use_pretrained: true
+  predict_other_rows: true  # Set to false to only predict first row
+
+  # Training
+  epochs: 100
+  batch_size: 32
+  lr: 1e-3
+  weight_decay: 1e-4
+  num_workers: 4
+  clip_grad: 1.0
+  warmup_epochs: 5
+
+  # Data augmentation
+  augment: true
+  augmentation:
+    flip_prob: 0.5
+    rotation_range: 5.0
+    scale_range: [0.95, 1.05]
+
+  # EMA (Exponential Moving Average)
+  use_ema: true
+  ema_decay: 0.999
+
+  # Teacher forcing
+  teacher_forcing_ratio: 0.5
+
+  # Loss weights
+  first_row_weight: 2.0
+  other_rows_weight: 1.0
+  normal_weight: 0.1      # Normal form consistency loss
+  line_weight: 0.1        # Line residual loss (straightness)
+  column_weight: 0.1      # Column alignment loss
+  ordering_weight: 0.02   # Row ordering loss (top to bottom)
+
+  # Loss function options
+  use_smooth_l1: false    # Use Smooth L1 instead of MSE
+  smooth_l1_beta: 0.1     # Beta for Smooth L1 loss
+
+  # Early stopping
+  early_stopping: true
+  early_stopping_patience: 25
+  early_stopping_min_delta: 0.0
+
+  # Visualization
+  visualize_every_n_epochs: 5   # Save sample visualizations every N epochs (0 to disable)
+  num_vis_samples: 4            # Number of samples to visualize per split

@@ -1,0 +1,77 @@
+# Cross-Attention Keypoint Detector Training Configuration
+#
+# Model types:
+#   - cross_attention: Full transformer with encoder-decoder (DETR-style)
+#   - hierarchical: Two-stage: predict row/col positions, then refine keypoints
+#   - lightweight: Efficient deformable attention variant
+
+# MLflow tracking
+experiment_name: cross_attention_keypoint
+run_name: null  # Auto-generated if null: cross_attn_{model.type}
+
+model:
+  type: cross_attention  # Options: cross_attention, hierarchical, lightweight
+  num_rows: 18
+  num_cols: 5
+  hidden_size: 256
+  num_heads: 8
+  backbone_name: resnet34  # Options: resnet18, resnet34, resnet50
+
+  # cross_attention specific
+  num_encoder_layers: 2   # Transformer encoder layers
+  num_decoder_layers: 4   # Transformer decoder layers
+
+  # hierarchical specific
+  num_layers: 3           # Layers for row/col decoders
+
+  # lightweight specific
+  num_sample_points: 4    # Deformable attention sampling points
+
+  dropout: 0.1
+  use_pretrained: true
+
+data:
+  train_dir: /path/to/train
+  val_dir: /path/to/val
+  image_size: [512, 512]
+  num_workers: 4
+  augment: true
+
+  # Data augmentation settings
+  augmentation:
+    flip_prob: 0.5          # Probability of horizontal flip
+    rotation_range: 5.0     # Max rotation angle in degrees (+/-)
+    scale_range: [0.95, 1.05]  # Scale range (min, max)
+
+training:
+  batch_size: 8           # Transformers need more memory, use smaller batch
+  epochs: 100
+  lr: 1.0e-4              # Lower LR for transformers
+  weight_decay: 1.0e-4
+  warmup_epochs: 5
+  clip_grad: 1.0          # Gradient clipping
+
+  # EMA (Exponential Moving Average)
+  use_ema: true           # Use EMA for more stable training
+  ema_decay: 0.999        # EMA decay factor
+
+  # Early stopping
+  early_stopping_patience: 0    # Set > 0 to enable (e.g., 15)
+  early_stopping_min_delta: 0.0 # Minimum improvement required
+
+loss:
+  grid_weight: 1.0
+  row_align_weight: 0.1   # Penalize y-variance within rows
+  col_align_weight: 0.1   # Penalize x-variance within columns
+  ordering_weight: 0.05   # Penalize out-of-order rows/columns
+  offset_reg_weight: 0.0  # Only for hierarchical model
+
+  # Loss function options
+  use_smooth_l1: false    # Use Smooth L1 instead of MSE (better gradients)
+  smooth_l1_beta: 0.1     # Beta for Smooth L1 loss
+  aux_loss_weight: 0.4    # Weight for auxiliary decoder losses
+
+output:
+  dir: outputs/cross_attention_keypoint
+  visualize_every_n_epochs: 5   # Save sample visualizations every N epochs (0 to disable)
+  num_vis_samples: 4            # Number of samples to visualize per split

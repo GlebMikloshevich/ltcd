@@ -1,22 +1,19 @@
-# The code was taken from the official implementation:
+# Adapted from the official UNeXt implementation:
 # https://github.com/jeya-maria-jose/UNeXt-pytorch
+# Upstream formatting preserved; do not run ruff on this file.
 # fmt: off
 
+import math
+
 import torch
-from torch import nn
-import torch
-from torch import nn
 import torch.nn.functional as F
+from timm.layers import DropPath, to_2tuple, trunc_normal_
+from torch import nn
+
 __all__ = ['UNext']
 
-from timm.layers import DropPath, to_2tuple, trunc_normal_
-import types
-import math
-from abc import ABCMeta, abstractmethod
 
-
-
-class shiftmlp(nn.Module):
+class ShiftMLP(nn.Module):
     def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, drop=0., shift_size=5):
         super().__init__()
         out_features = out_features or in_features
@@ -94,8 +91,7 @@ class shiftmlp(nn.Module):
         return x
 
 
-
-class shiftedBlock(nn.Module):
+class ShiftedBlock(nn.Module):
     def __init__(self, dim, num_heads, mlp_ratio=4., qkv_bias=False, qk_scale=None, drop=0., attn_drop=0.,
                  drop_path=0., act_layer=nn.GELU, norm_layer=nn.LayerNorm, sr_ratio=1):
         super().__init__()
@@ -104,7 +100,7 @@ class shiftedBlock(nn.Module):
         self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
         self.norm2 = norm_layer(dim)
         mlp_hidden_dim = int(dim * mlp_ratio)
-        self.mlp = shiftmlp(in_features=dim, hidden_features=mlp_hidden_dim, act_layer=act_layer, drop=drop)
+        self.mlp = ShiftMLP(in_features=dim, hidden_features=mlp_hidden_dim, act_layer=act_layer, drop=drop)
         self.apply(self._init_weights)
 
     def _init_weights(self, m):
@@ -142,8 +138,6 @@ class DWConv(nn.Module):
         return x
 
 class OverlapPatchEmbed(nn.Module):
-    """ Image to Patch Embedding
-    """
 
     def __init__(self, img_size=224, patch_size=7, stride=4, in_chans=3, embed_dim=768):
         super().__init__()
@@ -210,22 +204,22 @@ class UNext(nn.Module):
 
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))]
 
-        self.block1 = nn.ModuleList([shiftedBlock(
+        self.block1 = nn.ModuleList([ShiftedBlock(
             dim=embed_dims[1], num_heads=num_heads[0], mlp_ratio=1, qkv_bias=qkv_bias, qk_scale=qk_scale,
             drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[0], norm_layer=norm_layer,
             sr_ratio=sr_ratios[0])])
 
-        self.block2 = nn.ModuleList([shiftedBlock(
+        self.block2 = nn.ModuleList([ShiftedBlock(
             dim=embed_dims[2], num_heads=num_heads[0], mlp_ratio=1, qkv_bias=qkv_bias, qk_scale=qk_scale,
             drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[1], norm_layer=norm_layer,
             sr_ratio=sr_ratios[0])])
 
-        self.dblock1 = nn.ModuleList([shiftedBlock(
+        self.dblock1 = nn.ModuleList([ShiftedBlock(
             dim=embed_dims[1], num_heads=num_heads[0], mlp_ratio=1, qkv_bias=qkv_bias, qk_scale=qk_scale,
             drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[0], norm_layer=norm_layer,
             sr_ratio=sr_ratios[0])])
 
-        self.dblock2 = nn.ModuleList([shiftedBlock(
+        self.dblock2 = nn.ModuleList([ShiftedBlock(
             dim=embed_dims[0], num_heads=num_heads[0], mlp_ratio=1, qkv_bias=qkv_bias, qk_scale=qk_scale,
             drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[1], norm_layer=norm_layer,
             sr_ratio=sr_ratios[0])])
@@ -318,7 +312,7 @@ class UNext(nn.Module):
         return self.final(out)
 
 
-class UNext_S(nn.Module):
+class UNextSmall(nn.Module):
 
     ## Conv 3 + MLP 2 + shifted MLP w less parameters
     
@@ -344,22 +338,22 @@ class UNext_S(nn.Module):
 
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))]
 
-        self.block1 = nn.ModuleList([shiftedBlock(
+        self.block1 = nn.ModuleList([ShiftedBlock(
             dim=embed_dims[1], num_heads=num_heads[0], mlp_ratio=1, qkv_bias=qkv_bias, qk_scale=qk_scale,
             drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[0], norm_layer=norm_layer,
             sr_ratio=sr_ratios[0])])
 
-        self.block2 = nn.ModuleList([shiftedBlock(
+        self.block2 = nn.ModuleList([ShiftedBlock(
             dim=embed_dims[2], num_heads=num_heads[0], mlp_ratio=1, qkv_bias=qkv_bias, qk_scale=qk_scale,
             drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[1], norm_layer=norm_layer,
             sr_ratio=sr_ratios[0])])
 
-        self.dblock1 = nn.ModuleList([shiftedBlock(
+        self.dblock1 = nn.ModuleList([ShiftedBlock(
             dim=embed_dims[1], num_heads=num_heads[0], mlp_ratio=1, qkv_bias=qkv_bias, qk_scale=qk_scale,
             drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[0], norm_layer=norm_layer,
             sr_ratio=sr_ratios[0])])
 
-        self.dblock2 = nn.ModuleList([shiftedBlock(
+        self.dblock2 = nn.ModuleList([ShiftedBlock(
             dim=embed_dims[0], num_heads=num_heads[0], mlp_ratio=1, qkv_bias=qkv_bias, qk_scale=qk_scale,
             drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[1], norm_layer=norm_layer,
             sr_ratio=sr_ratios[0])])

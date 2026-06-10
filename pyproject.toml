@@ -9,6 +9,17 @@ dependencies = [
     "pillow>=11.3.0",
     "pydantic>=2.12.0",
     "torch>=2.8.0",
+    "torchvision>=0.23.0",
+    "tqdm>=4.67.1",
+    "ultralytics>=8.3.226",
+]
+
+[project.optional-dependencies]
+gnn = [
+    "torch-cluster>=1.6.3",
+    "torch-geometric>=2.7.0",
+    "torch-scatter>=2.1.2",
+    "torch-sparse>=0.6.18",
 ]
 
 
@@ -18,6 +29,17 @@ dev = [
     "pytest>=8.4.1",
     "ruff>=0.12.2",
 ]
+training = [
+    "hydra-zen>=0.16.0",
+    "mlflow>=3.5.1",
+
+]
+unext = [
+    "timm>=1.0.21",
+]
+
+# [tool.uv.extra-build-dependencies]
+#     torch-scatter = ["torch"]
 
 
 [tool.ruff]

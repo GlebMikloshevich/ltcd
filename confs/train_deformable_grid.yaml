@@ -1,0 +1,52 @@
+# Deformable Grid Predictor Training Configuration
+#
+# Model types:
+#   - affine: Global affine transform + local offsets (simplest)
+#   - tps: Thin Plate Spline transform + local offsets (more flexible)
+#   - multiscale: FPN backbone with affine + offsets (better localization)
+#   - corner_homography: Predict 4 corners, apply homography (simplest for fixed templates)
+
+# MLflow tracking
+experiment_name: deformable_grid
+run_name: null  # Auto-generated if null: deformable_grid_{model.type}
+
+model:
+  type: affine  # Options: affine, tps, multiscale, corner_homography
+  num_rows: 18
+  num_cols: 5
+  hidden_size: 256
+  offset_scale: 0.1  # Scale factor for offset predictions (smaller = more regularized)
+  backbone_name: resnet34  # Options: resnet18, resnet34, resnet50
+  use_pretrained: true
+
+  # TPS-specific parameters
+  num_control_points: 16  # Number of TPS control points (should be square: 4, 9, 16, 25)
+
+data:
+  train_dir: /path/to/train
+  val_dir: /path/to/val
+  image_size: [512, 512]
+  num_workers: 4
+  augment: true
+
+training:
+  batch_size: 16
+  epochs: 100
+  lr: 3.0e-4
+  weight_decay: 1.0e-4
+  min_lr: 1.0e-6
+
+loss:
+  # Main grid prediction loss
+  grid_weight: 1.0
+
+  # Structural alignment losses
+  row_align_weight: 0.1   # Penalize y-variance within rows
+  col_align_weight: 0.1   # Penalize x-variance within columns
+
+  # Offset regularization
+  smoothness_weight: 0.05  # Penalize non-smooth offset field
+  offset_reg_weight: 0.1   # Penalize large offset magnitudes
+
+output:
+  dir: outputs/deformable_grid

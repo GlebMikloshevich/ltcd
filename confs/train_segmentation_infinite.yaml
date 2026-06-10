@@ -1,0 +1,59 @@
+# Configuration for NAFUNet Segmentation with Infinite Data Generation
+
+experiment_name: table_segmentation_infinite
+run_name: nafunet_infinite_data
+model_name: nafunet_infinite
+
+params:
+  # Document generator path
+  generator_dir: /path/to/dataset
+
+  # Training steps (instead of dataset size)
+  num_epochs: 200
+  steps_per_epoch: 500  # Number of training iterations per epoch
+  val_steps: 100  # Number of validation iterations
+
+  # Batch settings
+  batch_size: 8
+  accumulation_steps: 2  # Effective batch = batch_size * accumulation_steps
+  grad_clip: 1.0  # Gradient clipping
+  # Parallel data generation
+  prefetch_batches: 16  # Number of batches to prepare in parallel
+  num_workers: 16  # Workers per batch generation (for doc_generator)
+
+
+  # Learning rate
+  lr: 1.0e-3
+  weight_decay: 1.0e-4
+
+  # Image settings
+  image_size:
+    - 512
+    - 512
+
+  # Model variant
+  model_variant: "small"  # Options: "small", "base", "large"
+
+  # String generator for document fields
+  string_generator:
+    type: "random"  # Options: "random", "pattern", "dictionary"
+    params:
+      min_length: 5
+      max_length: 14
+      charset: "numeric"  # "alphanumeric", "alpha", "numeric"
+
+  # Loss configuration
+  loss_type: "dice_focal"  # Options: "dice", "dice_focal", "dice_bce", "tversky", "soft_dice", "combo"
+
+  # Optimizer
+  optimizer: "adamw"  # Options: "adam", "adamw"
+
+  # Learning rate scheduler
+  scheduler: "cosine"  # Options: "plateau", "cosine", "step"
+  step_size: 1000  # For step scheduler only
+
+  # Mixed precision training
+  use_amp: true
+
+  # Checkpointing
+  save_interval: 10  # Save checkpoint every N epochs

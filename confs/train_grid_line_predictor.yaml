@@ -1,0 +1,80 @@
+# Grid Line Predictor Training Configuration
+#
+# Model types:
+#   - two_head: Separate heads for horizontal and vertical lines
+#   - unified: Single head with direction flag
+#   - fpn: FPN backbone with multi-scale features
+
+experiment_name: grid_line_predictor
+run_name: grid_line_v1
+
+params:
+  # Dataset
+  dataset_dir: /path/to/dataset
+  image_size: [512, 512]
+  num_keypoints: 90
+  num_rows: 18
+  num_cols: 5
+
+  # Model
+  model_type: two_head  # two_head, unified, or fpn
+  hidden_size: 256
+  num_lstm_layers: 2
+  dropout: 0.1
+  use_pretrained: true
+
+  # FPN model options
+  backbone_name: resnet34  # resnet18, resnet34, resnet50
+  use_attention: true      # Use channel attention in FPN
+
+  # Samples per line (two_head model)
+  # IMPORTANT: num_row_samples should equal num_cols (column positions)
+  # IMPORTANT: num_col_samples should equal num_rows (row positions)
+  num_row_samples: 5   # Points per horizontal line (= num_cols)
+  num_col_samples: 18  # Points per vertical line (= num_rows)
+
+  # Samples per line (unified model) - ignored, uses num_cols/num_rows
+  num_samples: 10  # Legacy, kept for checkpoint compatibility
+
+  # Training
+  epochs: 100
+  batch_size: 32
+  lr: 1e-3
+  weight_decay: 1e-4
+  num_workers: 4
+  clip_grad: 1.0
+  warmup_epochs: 5
+
+  # Data augmentation
+  augment: true
+  augmentation:
+    flip_prob: 0.5
+    rotation_range: 5.0
+    scale_range: [0.95, 1.05]
+
+  # EMA (Exponential Moving Average)
+  use_ema: true
+  ema_decay: 0.999
+
+  # Loss weights
+  horizontal_weight: 1.0  # Weight for horizontal (row) line loss
+  vertical_weight: 1.0    # Weight for vertical (column) line loss
+  line_weight: 0.1        # Line residual loss
+  normal_weight: 0.1      # Normal form consistency loss
+  coord_weight: 1.0       # Weight for coordinate supervision loss
+  row_align_weight: 0.05  # Penalize y-variance within rows
+  col_align_weight: 0.05  # Penalize x-variance within columns
+  ordering_weight: 0.02   # Penalize out-of-order rows/columns
+
+  # Loss function options
+  use_smooth_l1: false    # Use Smooth L1 instead of MSE
+  smooth_l1_beta: 0.1     # Beta for Smooth L1 loss
+
+  # Early stopping
+  early_stopping: true
+  early_stopping_patience: 25
+  early_stopping_min_delta: 0.0
+
+  # Visualization
+  visualize_every_n_epochs: 5   # Save sample visualizations every N epochs (0 to disable)
+  num_vis_samples: 4            # Number of samples to visualize per split

@@ -1,0 +1,30 @@
+experiment_name: first_row_regression
+run_name: first_row_regressor_base
+model_name: first_row_regressor
+
+params:
+  # Dataset
+  dataset_dir: /path/to/dataset
+  image_size:
+    - 512
+    - 512
+  num_keypoints: 90
+  num_rows: 18
+  num_cols: 5
+
+  # Model
+  model_type: "base"  # Options: "base", "multiscale"
+  hidden_size: 256
+  dropout: 0.1
+  use_pretrained: false
+
+  # Training
+  epochs: 100
+  batch_size: 32
+  lr: 1e-4
+  weight_decay: 1e-4
+  num_workers: 4
+
+  # Scheduler
+  scheduler: "cosine"  # Options: "cosine", "plateau", "step"
+  step_size: 10

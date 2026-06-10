@@ -1,0 +1,33 @@
+experiment_name: nafunet_heatmap
+model_name: nafunet_small   # nafunet_small | nafunet_base | nafunet_sca_small | nafunet_sca_base
+run_name: nafunet_smalll
+
+params:
+  dataset_dir: /path/to/dataset
+  mode: all_points             # corners | all_points
+  # mode: corners             # corners | all_points
+  use_precomputed_masks: False
+  # Grid layout (must match doc_generator config)
+  num_rows: 18
+  num_cols: 5
+
+  image_size:
+    - 512
+    - 512
+
+  sigma: 5.0                # Gaussian sigma for heatmap rendering
+
+  epochs: 120
+  batch_size: 12
+  lr: 1e-4
+  weight_decay: 0.0
+  num_workers: 8
+
+  use_amp: true
+  clip_grad: 1.0
+
+  loss_type: dice_focal     # dice | dice_focal | dice_bce | tversky | soft_dice | combo
+  scheduler: cosine         # cosine | plateau | step
+  warmup_epochs: 10
+  step_size: 10
+

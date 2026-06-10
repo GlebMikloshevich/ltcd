@@ -1,23 +1,52 @@
-src/ltcd/generators/doc_generator.py
-
-# Python-generated files
+# Python
 __pycache__/
-*.py[oc]
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+.eggs/
 build/
 dist/
-wheels/
-*.egg-info
-.mypy_cache
-.ruff_cache
+.python-version
 
-# Virtual environments
-.venv
-uv.lock
+# Virtual envs
+.venv/
+venv/
+env/
 
+# IDEs / OS
+.DS_Store
+.vscode/
+.idea/
+.claude/
 
-# test
-notebooks
-artifacts
+# uv
+.uv/
 
-# misc
-.vscode
+# Heavy artifact directories — kept locally, not tracked
+checkpoints/
+weights/
+runs/
+outputs/
+cell_detection/
+compare_experiments/
+scripts/checkpoints/
+scripts/outputs/
+scripts/visualization_output/
+
+# Local data / scratch
+data/
+notebooks/
+maps/
+test/
+
+# Top-level drawio scratch + one-off renders
+*.drawio
+*.drawio.bkp
+architecture_diagram.png
+
+# Logs and metric dumps
+*.log
+mlruns/
+mlartifacts/
+model_sizes.json

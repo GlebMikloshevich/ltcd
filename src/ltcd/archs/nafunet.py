@@ -1,22 +1,18 @@
-# Based on "Simple Baselines for Image Restoration" paper and github code implementation
+# Based on "Simple Baselines for Image Restoration"
 # https://arxiv.org/abs/2204.04676
-# NAFUNet: U-Net architecture based on NAFNet blocks.
-#
-
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-class LayerNorm2d(nn.Module):
-    """2D LayerNorm for channel-wise normalization using standard PyTorch LayerNorm."""
 
+class LayerNorm2d(nn.Module):
     def __init__(self, channels: int, eps: float = 1e-6) -> None:
         super().__init__()
         self.norm = nn.LayerNorm(channels, eps=eps)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # x: (N, C, H, W) -> (N, H, W, C) -> LayerNorm -> (N, C, H, W)
+        # nn.LayerNorm expects channels last; conv tensors are channels first.
         x = x.permute(0, 2, 3, 1)
         x = self.norm(x)
         x = x.permute(0, 3, 1, 2)
@@ -24,6 +20,9 @@ class LayerNorm2d(nn.Module):
 
 
 class SimpleGate(nn.Module):
+    # Drop-in replacement for GELU/ReLU in NAFNet: half the channels gate the
+    # other half multiplicatively. No exponentials, no softmax — cheaper and
+    # the paper shows it performs on par with explicit activations.
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x1, x2 = x.chunk(2, dim=1)
         return x1 * x2
@@ -41,14 +40,14 @@ class NAFBlock(nn.Module):
 
         dw_channels = channels * dw_expansion
 
-        # Spatial processing branch
         self.norm1 = LayerNorm2d(channels)
         self.conv1 = nn.Conv2d(channels, dw_channels, 1)
         self.conv2 = nn.Conv2d(dw_channels, dw_channels, 3, 1, 1, groups=dw_channels)
         self.sg = SimpleGate()
+        # SimpleGate halves the channel count, so the projection back is from
+        # dw_channels // 2, not dw_channels.
         self.conv3 = nn.Conv2d(dw_channels // 2, channels, 1)
 
-        # Channel processing branch (FFN)
         self.norm2 = LayerNorm2d(channels)
         self.conv4 = nn.Conv2d(channels, ffn_expansion * channels, 1)
         self.sg2 = SimpleGate()
@@ -56,14 +55,13 @@ class NAFBlock(nn.Module):
 
         self.drop_path = DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
 
+        # Zero-init residual scales so the block starts as identity. They become
+        # learnable, which lets the network ramp each branch in only if useful.
         self.beta = nn.Parameter(torch.zeros(1, channels, 1, 1))
         self.gamma = nn.Parameter(torch.zeros(1, channels, 1, 1))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward pass with skip connections."""
         shortcut = x
-
-        # Spatial processing
         x = self.norm1(x)
         x = self.conv1(x)
         x = self.conv2(x)
@@ -72,7 +70,6 @@ class NAFBlock(nn.Module):
         x = self.drop_path(x)
         x = shortcut + x * self.beta
 
-        # Channel processing (FFN)
         shortcut = x
         x = self.norm2(x)
         x = self.conv4(x)
@@ -85,6 +82,10 @@ class NAFBlock(nn.Module):
 
 
 class DropPath(nn.Module):
+    # Stochastic depth: drops whole residual branches per-sample, not per-pixel
+    # like nn.Dropout. The branch is kept with probability (1 - drop_prob) and
+    # the kept ones are scaled up by 1/(1 - drop_prob) so the expected output
+    # matches inference.
     def __init__(self, drop_prob: float = 0.0) -> None:
         super().__init__()
         self.drop_prob = drop_prob
@@ -96,9 +97,8 @@ class DropPath(nn.Module):
         keep_prob = 1 - self.drop_prob
         shape = (x.shape[0],) + (1,) * (x.ndim - 1)
         random_tensor = keep_prob + torch.rand(shape, dtype=x.dtype, device=x.device)
-        random_tensor.floor_()  # binarize
-        output = x.div(keep_prob) * random_tensor
-        return output
+        random_tensor.floor_()
+        return x.div(keep_prob) * random_tensor
 
 
 class DownsampleBlock(nn.Module):
@@ -120,8 +120,6 @@ class UpsampleBlock(nn.Module):
 
 
 class NAFUNet(nn.Module):
-    """U-Net architecture based on NAFNet blocks. """
-
     def __init__(
         self,
         in_channels: int = 3,
@@ -138,12 +136,12 @@ class NAFUNet(nn.Module):
         self.num_levels = len(num_blocks)
         channels = [base_channels * (2**i) for i in range(self.num_levels)]
 
-        # increasing droprate
+        # Linear drop-path schedule: deeper blocks drop harder. Standard recipe
+        # from the timm reference implementation.
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, sum(num_blocks))]
 
         self.input_conv = nn.Conv2d(in_channels, channels[0], 3, 1, 1)
 
-        # Encoder
         self.encoders = nn.ModuleList()
         self.downsamples = nn.ModuleList()
 
@@ -167,14 +165,14 @@ class NAFUNet(nn.Module):
                     DownsampleBlock(channels[level], channels[level + 1]),
                 )
 
-        # Decoder
         self.upsamples = nn.ModuleList()
         self.decoders = nn.ModuleList()
         self.skip_convs = nn.ModuleList()
 
+        # Decoder blocks skip drop-path: depth is symmetric to the encoder, so
+        # applying it again would double-count the regularisation.
         for level in range(self.num_levels - 1, 0, -1):
             self.upsamples.append(UpsampleBlock(channels[level], channels[level - 1]))
-
             self.skip_convs.append(
                 nn.Conv2d(channels[level - 1] * 2, channels[level - 1], 1),
             )
@@ -200,24 +198,24 @@ class NAFUNet(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.input_conv(x)
 
-        # encode
         skip_connections = []
         for level in range(self.num_levels):
-            for block in self.encoders[level]: # TODO(Gleb): straighforward
+            for block in self.encoders[level]:
                 x = block(x)
 
             if level < self.num_levels - 1:
                 skip_connections.append(x)
                 x = self.downsamples[level](x)
 
-        # decode
         for level in range(self.num_levels - 1):
             x = self.upsamples[level](x)
 
-            # skip connection
             skip = skip_connections[-(level + 1)]
 
-            # NOTE: can I do someting better ???
+            # ConvTranspose2d with stride 2 only matches the encoder shape when
+            # the input H/W is divisible by 2**(num_levels-1). For arbitrary
+            # input sizes (e.g. odd values from the augmentation pipeline) we
+            # need to nudge the upsampled tensor back onto the skip's grid.
             if x.shape != skip.shape:
                 x = F.interpolate(x, size=skip.shape[2:], mode="bilinear", align_corners=True)
 
@@ -227,14 +225,10 @@ class NAFUNet(nn.Module):
             for block in self.decoders[level]:
                 x = block(x)
 
-        x = self.output(x)
-
-        return x
+        return self.output(x)
 
 
 class NAFUNetSmall(NAFUNet):
-    """small NafUnet."""
-
     def __init__(self, in_channels: int = 3, out_channels: int = 1) -> None:
         super().__init__(
             in_channels=in_channels,
@@ -246,8 +240,6 @@ class NAFUNetSmall(NAFUNet):
 
 
 class NAFUNetBase(NAFUNet):
-    """Base NafUnet."""
-
     def __init__(self, in_channels: int = 3, out_channels: int = 1) -> None:
         super().__init__(
             in_channels=in_channels,
